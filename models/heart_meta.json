@@ -1,0 +1,98 @@
+{
+  "feature_names": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
+    "AgeGroup",
+    "RiskScore"
+  ],
+  "target_col": "target",
+  "age_col": "age",
+  "bmi_col": null,
+  "categorical_cols": [
+    "AgeGroup"
+  ],
+  "best_model_name": "Logistic Regression",
+  "feature_medians": {
+    "age": 54.0,
+    "sex": 0.0,
+    "cp": 1.0,
+    "trestbps": 132.0,
+    "chol": 247.0,
+    "fbs": 0.0,
+    "restecg": 1.0,
+    "thalach": 150.0,
+    "exang": 0.0,
+    "oldpeak": 0.7,
+    "slope": 1.0,
+    "ca": 2.0,
+    "thal": 1.0,
+    "AgeGroup": 1.0,
+    "RiskScore": -0.015551224505129527
+  },
+  "risk_stats": {
+    "cols": [
+      "age",
+      "sex",
+      "cp",
+      "trestbps",
+      "chol",
+      "fbs",
+      "restecg",
+      "thalach",
+      "exang",
+      "oldpeak",
+      "slope",
+      "ca",
+      "thal"
+    ],
+    "mean": {
+      "age": 53.379,
+      "sex": 0.475,
+      "cp": 1.496,
+      "trestbps": 131.448,
+      "chol": 247.857,
+      "fbs": 0.136,
+      "restecg": 0.997,
+      "thalach": 149.778,
+      "exang": 0.364,
+      "oldpeak": 1.0008,
+      "slope": 0.98,
+      "ca": 1.53,
+      "thal": 1.36
+    },
+    "std": {
+      "age": 14.122138429502739,
+      "sex": 0.499624484612067,
+      "cp": 1.120374598730259,
+      "trestbps": 16.298679178864166,
+      "chol": 50.52561121341769,
+      "fbs": 0.34296008850526877,
+      "restecg": 0.8121888033425655,
+      "thalach": 21.80771176295,
+      "exang": 0.48138938158056055,
+      "oldpeak": 1.005350730889868,
+      "slope": 0.8100964497369736,
+      "ca": 1.132423235653185,
+      "thal": 0.6714542815365461
+    }
+  },
+  "metrics": {
+    "Model": "Logistic Regression",
+    "Accuracy": 0.705,
+    "Precision": 0.68,
+    "Recall": 0.7157894736842105,
+    "F1": 0.6974358974358974,
+    "ROC_AUC": 0.7819548872180451
+  }
+}
