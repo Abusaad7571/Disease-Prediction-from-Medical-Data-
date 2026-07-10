@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitalCheck &mdash; Disease Risk Screening</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- ============ HEADER : ECG pulse signature ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 40 40" width="30" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="19" stroke="currentColor" stroke-width="2"/>
+          <path d="M6 20h5l3-9 5 18 3-9h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">VitalCheck</span>
+    </div>
+    <div class="ecg-strip" aria-hidden="true">
+      <svg id="ecgSvg" viewBox="0 0 600 60" preserveAspectRatio="none">
+        <path id="ecgPath" d="M0,30 L120,30 L135,10 L150,50 L165,30 L600,30" />
+      </svg>
+    </div>
+    <div class="tagline">ML-assisted screening &middot; not a medical diagnosis</div>
+  </header>
+
+  <main class="layout">
+
+    <!-- ============ LEFT : disease selector ============ -->
+    <nav class="disease-rail" aria-label="Select disease model">
+      <button class="disease-tab active" data-disease="heart">
+        <span class="tab-icon">&#10084;</span>
+        <span class="tab-text">
+          <strong>Heart Disease</strong>
+          <small>Cardiac risk profile</small>
+        </span>
+      </button>
+      <button class="disease-tab" data-disease="diabetes">
+        <span class="tab-icon">&#9878;</span>
+        <span class="tab-text">
+          <strong>Diabetes</strong>
+          <small>Glucose &amp; metabolic panel</small>
+        </span>
+      </button>
+      <button class="disease-tab" data-disease="breast_cancer">
+        <span class="tab-icon">&#127890;</span>
+        <span class="tab-text">
+          <strong>Breast Cancer</strong>
+          <small>Cell nuclei measurements</small>
+        </span>
+      </button>
+    </nav>
+
+    <!-- ============ CENTER : patient form ============ -->
+    <section class="form-panel">
+      <div class="panel-head">
+        <h1 id="formTitle">Heart Disease Screening</h1>
+        <p id="formSub">Enter the patient's clinical values below.</p>
+      </div>
+
+      <form id="patientForm" class="patient-form">
+        {% for disease, fields in form_fields.items() %}
+        <div class="field-grid" data-form-for="{{ disease }}" {% if disease != 'heart' %}hidden{% endif %}>
+          {% for f in fields %}
+          <div class="field">
+            <label for="{{ disease }}_{{ f.name }}">{{ f.label }}</label>
+            {% if f.type == 'select' %}
+            <select id="{{ disease }}_{{ f.name }}" name="{{ f.name }}">
+              {% for value, text in f.options %}
+              <option value="{{ value }}">{{ text }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <input
+              type="number"
+              id="{{ disease }}_{{ f.name }}"
+              name="{{ f.name }}"
+              step="{{ f.step|default('1') }}"
+              {% if f.min is defined %}min="{{ f.min }}"{% endif %}
+              {% if f.max is defined %}max="{{ f.max }}"{% endif %}
+              value="{{ f.default }}"
+              required
+            >
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="run-btn">
+          <span class="btn-label">Run Prediction</span>
+          <span class="btn-pulse" aria-hidden="true"></span>
+        </button>
+      </form>
+    </section>
+
+    <!-- ============ RIGHT : result card ============ -->
+    <aside class="result-panel">
+      <div id="resultEmpty" class="result-empty">
+        <div class="empty-glyph">&#128200;</div>
+        <p>Fill in the form and run a prediction to see the patient's risk result here.</p>
+      </div>
+
+      <div id="resultCard" class="result-card" hidden>
+        <p class="result-disease" id="resultDisease">Heart Disease</p>
+
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 200 120" class="gauge">
+            <path d="M20,110 A90,90 0 0,1 180,110" class="gauge-track"/>
+            <path d="M20,110 A90,90 0 0,1 180,110" class="gauge-fill" id="gaugeFill"/>
+          </svg>
+          <div class="gauge-number">
+            <span id="confidenceValue">0</span><span class="pct-sign">%</span>
+            <small>confidence</small>
+          </div>
+        </div>
+
+        <div class="verdict" id="verdictBadge">
+          <span id="verdictIcon">&#9989;</span>
+          <span id="verdictText">Low Risk / No Disease</span>
+        </div>
+
+        <p class="result-note" id="modelUsedNote">Model: Logistic Regression</p>
+      </div>
+
+      <div id="resultError" class="result-error" hidden></div>
+    </aside>
+
+  </main>
+
+  <footer class="footer-note">
+    Built for educational purposes with UCI-schema datasets &middot; Logistic Regression / SVM / Random Forest / XGBoost compared automatically &middot; Always consult a licensed physician for real diagnosis.
+  </footer>
+
+<script>
+const DEFAULT_TITLES = {
+  heart: ["Heart Disease Screening", "Enter the patient's cardiac clinical values below."],
+  diabetes: ["Diabetes Screening", "Enter the patient's metabolic panel values below."],
+  breast_cancer: ["Breast Cancer Screening", "Enter the patient's cell nuclei measurements below."]
+};
+
+const tabs = document.querySelectorAll(".disease-tab");
+const forms = document.querySelectorAll("[data-form-for]");
+let currentDisease = "heart";
+
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    tabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    currentDisease = tab.dataset.disease;
+
+    forms.forEach(f => f.hidden = (f.dataset.formFor !== currentDisease));
+
+    document.getElementById("formTitle").textContent = DEFAULT_TITLES[currentDisease][0];
+    document.getElementById("formSub").textContent = DEFAULT_TITLES[currentDisease][1];
+
+    resetResultPanel();
+  });
+});
+
+function resetResultPanel() {
+  document.getElementById("resultEmpty").hidden = false;
+  document.getElementById("resultCard").hidden = true;
+  document.getElementById("resultError").hidden = true;
+}
+
+const form = document.getElementById("patientForm");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const runBtn = document.querySelector(".run-btn");
+  runBtn.classList.add("loading");
+  runBtn.disabled = true;
+
+  const activeFieldset = document.querySelector(`[data-form-for="${currentDisease}"]`);
+  const inputs = activeFieldset.querySelectorAll("input, select");
+  const payload = {};
+  inputs.forEach(inp => { payload[inp.name] = inp.value; });
+
+  try {
+    const res = await fetch(`/predict/${currentDisease}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || "Prediction failed");
+
+    showResult(data);
+  } catch (err) {
+    document.getElementById("resultEmpty").hidden = true;
+    document.getElementById("resultCard").hidden = true;
+    const errBox = document.getElementById("resultError");
+    errBox.hidden = false;
+    errBox.textContent = "Something went wrong: " + err.message;
+  } finally {
+    runBtn.classList.remove("loading");
+    runBtn.disabled = false;
+  }
+});
+
+function showResult(data) {
+  document.getElementById("resultEmpty").hidden = true;
+  document.getElementById("resultError").hidden = true;
+  const card = document.getElementById("resultCard");
+  card.hidden = false;
+
+  document.getElementById("resultDisease").textContent = data.disease;
+  document.getElementById("modelUsedNote").textContent = "Model: " + data.model_used;
+
+  const isRisk = data.prediction === 1;
+  card.classList.toggle("risk", isRisk);
+  card.classList.toggle("safe", !isRisk);
+
+  document.getElementById("verdictIcon").textContent = isRisk ? "\u274C" : "\u2705";
+  document.getElementById("verdictText").textContent = data.label;
+
+  // Animate confidence number + gauge arc
+  const conf = data.confidence;
+  document.getElementById("confidenceValue").textContent = Math.round(conf);
+
+  const gaugeFill = document.getElementById("gaugeFill");
+  const totalLength = gaugeFill.getTotalLength();
+  gaugeFill.style.strokeDasharray = totalLength;
+  gaugeFill.style.strokeDashoffset = totalLength;
+  gaugeFill.style.stroke = isRisk ? "var(--risk)" : "var(--safe)";
+  requestAnimationFrame(() => {
+    gaugeFill.style.transition = "stroke-dashoffset 0.9s ease";
+    gaugeFill.style.strokeDashoffset = totalLength * (1 - conf / 100);
+  });
+}
+</script>
+</body>
+</html>
